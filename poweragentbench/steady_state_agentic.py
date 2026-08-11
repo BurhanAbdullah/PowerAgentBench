@@ -965,6 +965,103 @@ class SteadyN2ToolServer:
         return {"error": f"Unknown tool '{tool}'.", "allowed_tools": ["case_summary", "rank_base_loading", "rank_lodf", "validate", "redispatch", "submit"]}, False, None
 
 
+
+def compute_anytime_risk_metrics(
+    output: AgentOutput,
+    oracle_values: Dict[Contingency, float],
+    dangerous: set[Contingency],
+) -> Dict[str, float]:
+    """Measure risk discovered as the validation budget is consumed.
+
+    The hidden oracle is used only by the evaluator.  The agent sees neither
+    the hidden severity values nor the resulting anytime-risk metrics.
+    """
+    budget = int(output.validation_budget)
+
+    if budget <= 0 or not dangerous:
+        return {
+            "anytime_risk_auc": 0.0,
+            "anytime_risk_at_25": 0.0,
+            "anytime_risk_at_50": 0.0,
+            "anytime_risk_at_75": 0.0,
+            "anytime_risk_at_100": 0.0,
+        }
+
+    total_risk = sum(
+        max(0.0, float(oracle_values.get(c, 0.0)))
+        for c in dangerous
+    )
+
+    if total_risk <= 1e-12:
+        return {
+            "anytime_risk_auc": 0.0,
+            "anytime_risk_at_25": 0.0,
+            "anytime_risk_at_50": 0.0,
+            "anytime_risk_at_75": 0.0,
+            "anytime_risk_at_100": 0.0,
+        }
+
+    # AgentOutput.validated preserves insertion order.  This gives us a
+    # common validation trajectory for both deterministic and LLM agents.
+    validation_order = list(output.validated.keys())
+
+    points = [(0, 0.0)]
+    discovered = set()
+
+    for i, contingency in enumerate(validation_order, start=1):
+        if i > budget:
+            break
+
+        discovered.add(contingency)
+
+        discovered_risk = sum(
+            max(0.0, float(oracle_values.get(c, 0.0)))
+            for c in discovered
+            if c in dangerous
+        )
+
+        risk_fraction = min(1.0, discovered_risk / total_risk)
+        points.append((i, risk_fraction))
+
+    # If the agent used less than the available budget, hold its final
+    # discovery level for the unused portion of the budget.
+    if points[-1][0] < budget:
+        points.append((budget, points[-1][1]))
+
+    def risk_at(target: int) -> float:
+        if target <= 0:
+            return 0.0
+
+        for i in range(1, len(points)):
+            x0, y0 = points[i - 1]
+            x1, y1 = points[i]
+
+            if target <= x1:
+                if x1 == x0:
+                    return float(y1)
+
+                alpha = (target - x0) / float(x1 - x0)
+                return float(y0 + alpha * (y1 - y0))
+
+        return float(points[-1][1])
+
+    # Normalized trapezoidal area under the risk-discovery curve.
+    auc = 0.0
+
+    for (x0, y0), (x1, y1) in zip(points[:-1], points[1:]):
+        auc += 0.5 * (y0 + y1) * (x1 - x0)
+
+    auc /= float(budget)
+
+    return {
+        "anytime_risk_auc": float(auc),
+        "anytime_risk_at_25": risk_at(int(round(0.25 * budget))),
+        "anytime_risk_at_50": risk_at(int(round(0.50 * budget))),
+        "anytime_risk_at_75": risk_at(int(round(0.75 * budget))),
+        "anytime_risk_at_100": risk_at(budget),
+    }
+
+
 def score_agent(
     original_case: GridCase,
     output: AgentOutput,
@@ -1039,6 +1136,12 @@ def score_agent(
     unvalidated_claims = reported - found
     unvalidated_claim_rate = len(unvalidated_claims) / max(1, len(reported))
 
+    anytime_metrics = compute_anytime_risk_metrics(
+        output=output,
+        oracle_values=oracle_values,
+        dangerous=dangerous,
+    )
+
     eval_case = output.mitigated_case if output.mitigated_case is not None else original_case
 
     pre_top_values = [dc_power_flow(original_case, c).severity for c in oracle_top_list]
@@ -1094,6 +1197,7 @@ def score_agent(
             if output.validation_budget
             else 0.0
         ),
+        **anytime_metrics,
     }
 
 

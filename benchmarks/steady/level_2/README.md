@@ -157,6 +157,23 @@ The runner returns per-case and aggregate CSV files with:
 
 These fields separate search quality, evidence quality, tool compliance, budget use, mitigation, and workflow completion.
 
+### Severity-Weighted Anytime Risk Discovery
+
+The evaluator also reports severity-weighted anytime risk-discovery metrics:
+
+- `anytime_risk_auc`,
+- `anytime_risk_at_25`,
+- `anytime_risk_at_50`,
+- `anytime_risk_at_75`,
+- `anytime_risk_at_100`.
+
+These metrics evaluate how quickly an agent discovers hidden dangerous contingency severity as its validation budget is consumed. For a validation fraction \(\alpha\), the risk-discovery fraction is the severity discovered up to that point divided by the total hidden severity of dangerous contingencies. `anytime_risk_auc` is the normalized trapezoidal area under this discovery curve.
+
+The metrics are computed by the hidden evaluator after the agent has completed its validation trajectory. Hidden oracle severity values are therefore not exposed to the agent.
+
+For a fixed validation budget, a higher `anytime_risk_auc` indicates earlier discovery of severity-weighted risk. The `at_*` metrics report discovery at 25%, 50%, 75%, and 100% of the available validation budget. These metrics complement final discovery, evidence, safety, mitigation, and action-cost metrics rather than replacing them.
+
+
 ## Evaluation Regimes
 
 - **Open**: users can inspect public files and debug agents locally.

@@ -236,6 +236,7 @@ PowerAgentBench returns per-case and aggregate metrics, including:
 - duplicate validation requests,
 - explicit submission and auto-finalization indicators,
 - validation budget use,
+- severity-weighted anytime risk-discovery AUC and discovery at 25%, 50%, 75%, and 100% of the validation budget,
 - completed and requested case counts.
 
 These metrics distinguish answer quality, tool evidence, search quality, mitigation quality, safety behavior, and workflow compliance.
