@@ -1,6 +1,6 @@
 # PowerAgentBench
 
-PowerAgentBench is a benchmark suite for evaluating AI agents on power-system operation and planning tasks. The current release includes steady-state and dynamic-study tracks, covering contingency analysis, dynamic model-quality review, dynamic security-risk screening, scripted baselines, and LLM/tool-agent evaluation.
+PowerAgentBench is a benchmark suite for evaluating AI agents on power-system operation and planning tasks. The current release includes steady-state and dynamic-study tracks, covering contingency analysis, AC power-flow convergence restoration, dynamic model-quality review, dynamic security-risk screening, scripted baselines, and LLM/tool-agent evaluation.
 
 The benchmark is built around a public/hidden split. Agents see public case data, scenarios, action spaces, and tool APIs. Hidden evaluators recompute steady-state or dynamic validity and return discovery, evidence, safety, mitigation, efficiency, workflow, and reliability metrics.
 
@@ -25,12 +25,18 @@ PowerAgentBench/
 │   │   │   ├── actioncost.json                 # Per-step action costs
 │   │   │   ├── baseline_summary.json
 │   │   │   └── solution_template.json
-│   │   └── level_2/                            # Agentic N-2 search and mitigation
-│   │       ├── README.md                       # Full Level 2 benchmark specification
-│   │       ├── .env.example                    # Template for private model/API configuration
-│   │       ├── .gitignore                      # Keeps local .env files out of git
-│   │       └── prompts/
-│   │           └── steady_n2_llm_prompt.json   # Shared LLM tool-use prompt template
+│   │   ├── level_2/                            # Agentic N-2 search and mitigation
+│   │   │   ├── README.md                       # Full Level 2 benchmark specification
+│   │   │   ├── .env.example                    # Template for private model/API configuration
+│   │   │   ├── .gitignore                      # Keeps local .env files out of git
+│   │   │   └── prompts/
+│   │   │       └── steady_n2_llm_prompt.json   # Shared LLM tool-use prompt template
+│   │   └── level_3/                            # RestoreBench: AC power-flow convergence restoration
+│   │       ├── README.md                       # Full Level 3 benchmark specification
+│   │       ├── pyproject.toml                  # Self-contained package (uv lockfile pinned)
+│   │       ├── restorebench/                   # Benchmark package: agents, environment, scoring
+│   │       ├── dataset/                        # Frozen IEEE 118-bus and PEGASE 89-bus corpora
+│   │       └── tests/                          # Offline test suite (no API calls required)
 │   └── dynamic/
 │       └── level1/                             # Dynamic model-quality review (DMView + PSS/E)
 │           ├── README.md                       # Full benchmark spec + install prerequisites
@@ -116,6 +122,26 @@ python scripts/run_steady_n2_openai_eval.py \
 
 Outputs are written under `results/steady_n2/` for Ollama runs and `results/steady_n2_openai/` for OpenAI runs. Each run produces per-case CSVs, aggregate CSVs, tool logs, sanitized API debug files, and LaTeX table rows.
 
+### Level 3: RestoreBench — AC power-flow convergence restoration
+
+Level 3 is self-contained and uses [`uv`](https://docs.astral.sh/uv/) with a pinned lockfile. Install and run it from its own directory:
+
+```bash
+cd benchmarks/steady/level_3
+uv sync
+
+# Verify the frozen corpora without any LLM credential
+uv run restorebench-verify --dataset-dir dataset/pegase89
+
+# Score a maneuver attempt produced by any model
+uv run restorebench-score attempt.json
+
+# Run a published LLM campaign (requires a provider API key)
+uv run restorebench-sweep --campaign ieee118-anthropic --dry-run
+```
+
+See `benchmarks/steady/level_3/README.md` for the full specification, datasets, agent architectures, and reproduction instructions.
+
 ## Case Formats
 
 The IEEE 39-bus stressed scenario is provided in three formats so that agents and solvers are not tied to a single tool:
@@ -146,6 +172,18 @@ See:
 
 ```text
 benchmarks/steady/level_2/README.md
+```
+
+### Steady Level 3
+
+`benchmarks/steady/level_3/` is **RestoreBench** — diagnosis and recovery of non-convergent AC power-flow cases using LLM-based agents. Every scenario is a grid snapshot for which the AC power flow does not converge; the agent proposes reactive-control maneuvers (generator voltage setpoints, shunt switching, transformer taps) with solver-grounded feedback after each action, and succeeds if convergence is restored within a ten-maneuver budget. It ships frozen IEEE 118-bus and PEGASE 89-bus corpora, a standalone scorer, and chatbot/single-agent/multi-agent reference architectures on a deterministic pandapower environment.
+
+Level 3 is self-contained: it has its own Python package and `uv` lockfile, and is installed and run from its own directory rather than from the repository root.
+
+See:
+
+```text
+benchmarks/steady/level_3/README.md
 ```
 
 ### Dynamic Level 1
