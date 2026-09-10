@@ -1,7 +1,7 @@
 """Deterministic ranking helpers for benchmark candidate selection."""
 from __future__ import annotations
 
-from typing import Callable, Iterable, List, Sequence, Tuple, TypeVar
+from typing import Callable, Iterable, List, TypeVar
 
 T = TypeVar("T")
 
@@ -21,25 +21,24 @@ def deterministic_rank(
     """Rank items by score with an explicit deterministic tie-break.
 
     The secondary key is independent of the input iteration order. This keeps
-    benchmark candidate selection and reported rankings reproducible when two
-    candidates receive identical scores.
+    benchmark candidate selection reproducible when multiple candidates have
+    identical scores.
     """
-    ranked = sorted(
-        items,
-        key=lambda item: (float(score(item)), _canonical_item_key(item)),
-        reverse=reverse,
-    )
+    scored = [(float(score(item)), _canonical_item_key(item), item) for item in items]
+    scored.sort(key=lambda row: (row[0], row[1]), reverse=reverse)
+
     if reverse:
-        # ``reverse=True`` also reverses the textual tie-break, so reorder each
-        # equal-score group into ascending canonical-key order.
-        out: List[T] = []
+        # Only the primary score is descending; canonical keys stay ascending.
+        ordered: List[T] = []
         i = 0
-        while i < len(ranked):
+        while i < len(scored):
             j = i + 1
-            score_i = float(score(ranked[i]))
-            while j < len(ranked) and float(score(ranked[j])) == score_i:
+            score_i = scored[i][0]
+            while j < len(scored) and scored[j][0] == score_i:
                 j += 1
-            out.extend(sorted(ranked[i:j], key=_canonical_item_key))
+            ordered.extend(row[2] for row in sorted(scored[i:j], key=lambda row: row[1]))
             i = j
-        ranked = out
-    return ranked[:limit] if limit is not None else ranked
+        return ordered[:limit] if limit is not None else ordered
+
+    ordered = [row[2] for row in scored]
+    return ordered[:limit] if limit is not None else ordered
