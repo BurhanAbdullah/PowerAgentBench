@@ -1,0 +1,44 @@
+name: reproducibility
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  manifest-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install package and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e . pytest
+
+      - name: Validate manifest and sharding contracts
+        run: pytest -q tests/test_run_manifest.py
+
+      - name: Smoke-test manifest CLI
+        run: |
+          python scripts/make_run_manifest.py \
+            --output /tmp/poweragentbench-manifest.json \
+            --track steady_n2 \
+            --case-source synthetic \
+            --cases 5 \
+            --seed-start 100
+          python - <<'PY'
+          from poweragentbench.run_manifest import read_manifest
+          manifest = read_manifest('/tmp/poweragentbench-manifest.json')
+          assert manifest['seeds'] == [100, 101, 102, 103, 104]
+          assert len(manifest['manifest_sha256']) == 64
+          print('manifest smoke test: OK')
+          PY
