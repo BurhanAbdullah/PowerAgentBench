@@ -8,59 +8,56 @@ The benchmark is built around a public/hidden split. Agents see public case data
 
 ```text
 PowerAgentBench/
-├── cases/
+├── cases/                                      # Network case data in multiple formats
 │   ├── case39/
-│   │   ├── pypsa/case39.nc
-│   │   ├── matpower/case39.m
-│   │   └── pandapower/case39.json
+│   │   ├── pypsa/case39.nc                     # PyPSA netCDF format
+│   │   ├── matpower/case39.m                   # MATPOWER .m format
+│   │   └── pandapower/case39.json              # PandaPower JSON format
 │   └── solar_wecc/
-│       └── psse/
-│           ├── Solar.sav
-│           └── Solar.dyr
-├── benchmarks/
+│       └── psse/                               # WECC solar PV dynamic case (PSS/E)
+│           ├── Solar.sav                       # Power-flow case
+│           └── Solar.dyr                       # Dynamic model (corrupted REECAU1 gains)
+├── benchmarks/                                 # Benchmark definitions and task configs
 │   ├── steady/
-│   │   ├── level_1/
-│   │   │   ├── README.md
-│   │   │   ├── actionspace.json
-│   │   │   ├── actioncost.json
+│   │   ├── level_1/                            # N-1 steady-state audit and mitigation
+│   │   │   ├── README.md                       # Full Level 1 benchmark specification
+│   │   │   ├── actionspace.json                # Action contract and operating limits
+│   │   │   ├── actioncost.json                 # Per-step action costs
 │   │   │   ├── baseline_summary.json
 │   │   │   └── solution_template.json
-│   │   ├── level_2/
-│   │   │   ├── README.md
-│   │   │   ├── .env.example
-│   │   │   ├── .gitignore
+│   │   ├── level_2/                            # Agentic N-2 search and mitigation
+│   │   │   ├── README.md                       # Full Level 2 benchmark specification
+│   │   │   ├── .env.example                    # Template for private model/API configuration
+│   │   │   ├── .gitignore                      # Keeps local .env files out of git
 │   │   │   └── prompts/
-│   │   │       └── steady_n2_llm_prompt.json
-│   │   └── level_3/
-│   │       ├── README.md
-│   │       ├── pyproject.toml
-│   │       ├── restorebench/
-│   │       ├── dataset/
-│   │       └── tests/
+│   │   │       └── steady_n2_llm_prompt.json   # Shared LLM tool-use prompt template
+│   │   └── level_3/                            # RestoreBench: AC power-flow convergence restoration
+│   │       ├── README.md                       # Full Level 3 benchmark specification
+│   │       ├── pyproject.toml                  # Self-contained package (uv lockfile pinned)
+│   │       ├── restorebench/                   # Benchmark package: agents, environment, scoring
+│   │       ├── dataset/                        # Frozen IEEE 118-bus and PEGASE 89-bus corpora
+│   │       └── tests/                          # Offline test suite (no API calls required)
 │   └── dynamic/
-│       └── level1/
-│           ├── README.md
-│           ├── actionspace.json
-│           ├── actioncost.json
-│           ├── baseline_summary.json
+│       └── level1/                             # Dynamic model-quality review (DMView + PSS/E)
+│           ├── README.md                       # Full benchmark spec + install prerequisites
+│           ├── actionspace.json                # REECAU1 gain action contract + test suite
+│           ├── actioncost.json                 # Per-simulation cost and budget
+│           ├── baseline_summary.json           # Corrupted-model 0/8 reference + good solution
 │           ├── solution_template.json
-│           └── harness/
-├── scripts/
-│   ├── build_case.py
-│   ├── convert_case.py
-│   ├── evaluate_solution.py
-│   ├── make_run_manifest.py
-│   ├── run_steady_n2_baselines.py
-│   ├── run_steady_n2_ollama_eval.py
-│   └── run_steady_n2_openai_eval.py
-├── tests/
-└── poweragentbench/
-    ├── benchmark_utils.py
-    ├── run_manifest.py
-    ├── steady_state_agentic.py
-    ├── llm_agent_adapter.py
-    ├── ollama_client.py
-    └── openai_client.py
+│           └── harness/                        # Runnable harness (DMView automation + agent loop)
+├── scripts/                                    # Runnable entry points
+│   ├── build_case.py                           # Rebuild the stressed Level 1 scenario
+│   ├── convert_case.py                         # Export case39 to MATPOWER and PandaPower
+│   ├── evaluate_solution.py                    # Score a Level 1 solution
+│   ├── run_steady_n2_baselines.py              # Run Level 2 scripted baselines
+│   ├── run_steady_n2_ollama_eval.py            # Run Level 2 Ollama-hosted LLM agents
+│   └── run_steady_n2_openai_eval.py            # Run Level 2 OpenAI/ChatGPT-style agents
+└── poweragentbench/                            # Shared library code
+    ├── benchmark_utils.py                      # Level 1 case construction and scoring
+    ├── steady_state_agentic.py                 # Level 2 DC N-2 evaluator and baselines
+    ├── llm_agent_adapter.py                    # Provider-agnostic JSON-command LLM adapter
+    ├── ollama_client.py                        # Ollama generate/chat client
+    └── openai_client.py                        # OpenAI Responses API client
 ```
 
 ## Installation
@@ -76,8 +73,13 @@ The package intentionally uses lightweight Python dependencies. Provider SDKs ar
 ### Level 1: N-1 steady-state audit and mitigation
 
 ```bash
+# Rebuild the benchmark case from source
 python scripts/build_case.py
+
+# Export to MATPOWER and PandaPower formats
 python scripts/convert_case.py
+
+# Evaluate a solution
 python scripts/evaluate_solution.py \
   --solution benchmarks/steady/level_1/solution_template.json
 ```
@@ -106,7 +108,7 @@ python scripts/run_steady_n2_ollama_eval.py \
   --prompt-template benchmarks/steady/level_2/prompts/steady_n2_llm_prompt.json
 ```
 
-Run an OpenAI/ChatGPT-style agent:
+Run an OpenAI/ChatGPT-style agent, for example GPT-5.5:
 
 ```bash
 python scripts/run_steady_n2_openai_eval.py \
@@ -118,46 +120,23 @@ python scripts/run_steady_n2_openai_eval.py \
   --prompt-template benchmarks/steady/level_2/prompts/steady_n2_llm_prompt.json
 ```
 
-Outputs are written under `results/steady_n2/` and `results/steady_n2_openai/`. Each run produces per-case CSVs, aggregate CSVs, tool logs, sanitized API debug files, and LaTeX table rows.
+Outputs are written under `results/steady_n2/` for Ollama runs and `results/steady_n2_openai/` for OpenAI runs. Each run produces per-case CSVs, aggregate CSVs, tool logs, sanitized API debug files, and LaTeX table rows.
 
-### Reproducible campaign manifests
+### Level 3: RestoreBench — AC power-flow convergence restoration
 
-Multi-case campaigns should use an explicit manifest describing the benchmark track, case source, deterministic seed sequence, search parameters, repository revision, runtime environment, and a SHA-256 fingerprint. Create one before a campaign:
-
-```bash
-python scripts/make_run_manifest.py \
-  --output results/steady_n2/run_manifest.json \
-  --track steady_n2 \
-  --case-source case39 \
-  --cases 8 \
-  --seed-start 1000 \
-  --k 2 \
-  --budget 80 \
-  --report-k 20
-```
-
-The manifest records reproducibility metadata only. Do not put API keys, private endpoints, hidden oracle labels, prompts containing secrets, or licensed simulator data into it. The `manifest_sha256` fingerprint makes accidental or post-hoc configuration edits detectable.
-
-The shared library provides deterministic round-robin case sharding and strict result merging:
-
-```python
-from poweragentbench.run_manifest import merge_case_results, shard_seeds
-
-shard = shard_seeds(manifest["seeds"], shard_index=0, shard_count=4)
-merged = merge_case_results(rows_from_all_workers, manifest["seeds"])
-```
-
-Shards are disjoint and cover the manifest seed set exactly. Result merging rejects duplicate, missing, or unexpected case seeds and restores the manifest's canonical order. This permits parallel workers to produce partial result files without changing final case ordering.
-
-## Level 3: RestoreBench — AC power-flow convergence restoration
-
-Level 3 is self-contained and uses `uv` with a pinned lockfile. Install and run it from its own directory:
+Level 3 is self-contained and uses [`uv`](https://docs.astral.sh/uv/) with a pinned lockfile. Install and run it from its own directory:
 
 ```bash
 cd benchmarks/steady/level_3
 uv sync
+
+# Verify the frozen corpora without any LLM credential
 uv run restorebench-verify --dataset-dir dataset/pegase89
+
+# Score a maneuver attempt produced by any model
 uv run restorebench-score attempt.json
+
+# Run a published LLM campaign (requires a provider API key)
 uv run restorebench-sweep --campaign ieee118-anthropic --dry-run
 ```
 
@@ -165,17 +144,23 @@ See `benchmarks/steady/level_3/README.md` for the full specification, datasets, 
 
 ## Case Formats
 
-The IEEE 39-bus stressed scenario is provided in three formats:
+The IEEE 39-bus stressed scenario is provided in three formats so that agents and solvers are not tied to a single tool:
 
-- **PyPSA** (`cases/case39/pypsa/case39.nc`): primary format used by the Level 1 evaluator and Level 2 case39 converter.
+- **PyPSA** (`cases/case39/pypsa/case39.nc`): primary format used by the Level 1 evaluator and by the Level 2 case39 converter.
 - **PandaPower** (`cases/case39/pandapower/case39.json`): for PandaPower-based tools.
-- **MATPOWER** (`cases/case39/matpower/case39.m`): for MATPOWER or compatible solvers.
+- **MATPOWER** (`cases/case39/matpower/case39.m`): for MATPOWER or MATPOWER-compatible solvers.
 
 ## Benchmarks
 
 ### Steady Level 1
 
-`benchmarks/steady/level_1/` evaluates N-1 steady-state audit and mitigation on a stressed IEEE 39-bus case. The agent receives a case, a published contingency list, and a bounded action space. The evaluator checks base-case and contingency violations after submitted actions.
+`benchmarks/steady/level_1/` evaluates N-1 steady-state audit and mitigation on a stressed IEEE 39-bus case. The agent receives a case, a published contingency list, and a bounded action space. The evaluator checks base-case and contingency violations after the submitted actions.
+
+See:
+
+```text
+benchmarks/steady/level_1/README.md
+```
 
 ### Steady Level 2
 
@@ -183,27 +168,49 @@ The IEEE 39-bus stressed scenario is provided in three formats:
 
 The default case source is the existing IEEE 39-bus case distributed in this repository. The runner converts it to a lightweight DC representation and creates deterministic operating-point variants from fixed seeds. A synthetic fallback is also available for development.
 
+See:
+
+```text
+benchmarks/steady/level_2/README.md
+```
+
 ### Steady Level 3
 
-`benchmarks/steady/level_3/` is **RestoreBench** — diagnosis and recovery of non-convergent AC power-flow cases using LLM-based agents. Every scenario is a grid snapshot for which AC power flow does not converge; the agent proposes reactive-control maneuvers with solver-grounded feedback and succeeds if convergence is restored within a ten-maneuver budget. It ships frozen IEEE 118-bus and PEGASE 89-bus corpora, a standalone scorer, and reference agent architectures on a deterministic pandapower environment.
+`benchmarks/steady/level_3/` is **RestoreBench** — diagnosis and recovery of non-convergent AC power-flow cases using LLM-based agents. Every scenario is a grid snapshot for which the AC power flow does not converge; the agent proposes reactive-control maneuvers (generator voltage setpoints, shunt switching, transformer taps) with solver-grounded feedback after each action, and succeeds if convergence is restored within a ten-maneuver budget. It ships frozen IEEE 118-bus and PEGASE 89-bus corpora, a standalone scorer, and chatbot/single-agent/multi-agent reference architectures on a deterministic pandapower environment.
+
+Level 3 is self-contained: it has its own Python package and `uv` lockfile, and is installed and run from its own directory rather than from the repository root.
+
+See:
+
+```text
+benchmarks/steady/level_3/README.md
+```
 
 ### Dynamic Level 1
 
-`benchmarks/dynamic/level1/` evaluates dynamic model-quality review on a modified WECC solar PV model. The agent runs the DMView model-quality test suite, diagnoses failures, and repairs the model by adjusting four allowed REECAU1 controller gains within a five-iteration budget.
+`benchmarks/dynamic/level1/` evaluates dynamic model-quality review on a modified WECC solar PV model. The agent runs the DMView model-quality test suite (flat start, voltage/frequency steps, HVRT/LVRT, weak-grid SCR), diagnoses the failures, and repairs the model by adjusting only four allowed REECAU1 controller gains within a five-iteration budget.
 
-> **Note:** Unlike the steady-state benchmarks, this dynamic benchmark requires licensed/external tooling: **PSS/E 36.2** and the **DMView 3.4** dynamic-model review tool, running on Python 3.11. Set `DMVIEW_ROOT` and `PY311` in `benchmarks/dynamic/level1/harness/config.py` for your installation.
+> **Note:** Unlike the steady-state benchmarks (open-source PyPSA), this dynamic benchmark requires **licensed/external tooling that you must install first**: **PSS/E 36.2** (Siemens, with valid license and Python bindings) and the **DMView 3.4** dynamic-model review tool (<https://sites.google.com/view/dmview/home>), running on Python 3.11. Set `DMVIEW_ROOT` and `PY311` in `benchmarks/dynamic/level1/harness/config.py` for your install.
+
+See:
+
+```text
+benchmarks/dynamic/level1/README.md
+```
 
 ## Model and API Configuration
 
-Private model endpoints and API keys should not be committed. Configure them through a local `.env` file:
+Private model endpoints and API keys should not be committed to the repository. Configure them through a local `.env` file:
 
 ```bash
 cp benchmarks/steady/level_2/.env.example benchmarks/steady/level_2/.env
 ```
 
-The local `.env` file is ignored by Git. Settings may also be supplied through command-line flags or environment variables.
+The local `.env` file is ignored by Git. You may also pass the same settings through command-line flags or process environment variables.
 
 ### Ollama configuration
+
+Example local Ollama settings:
 
 ```bash
 POWERAGENTBENCH_OLLAMA_URL=http://localhost:11434/api/generate
@@ -215,9 +222,13 @@ POWERAGENTBENCH_OLLAMA_THINK=false
 POWERAGENTBENCH_OLLAMA_SCHEMA_FORMAT=true
 ```
 
-For internal deployments, replace the URL locally. Do not commit internal URLs. Raw thinking traces, when exposed by a model, are not parsed, scored, or required for benchmark results.
+For internal deployments, replace `POWERAGENTBENCH_OLLAMA_URL` locally. Do not commit internal URLs.
+
+Some Ollama models expose a `thinking` field when `POWERAGENTBENCH_OLLAMA_THINK=true`. PowerAgentBench treats this only as a generation option. Raw thinking traces are not parsed, scored, or required for benchmark results.
 
 ### OpenAI/ChatGPT configuration
+
+Example local OpenAI settings:
 
 ```bash
 POWERAGENTBENCH_OPENAI_API_KEY=sk-your-private-token
@@ -233,7 +244,20 @@ POWERAGENTBENCH_OPENAI_MAX_RETRIES=3
 POWERAGENTBENCH_OPENAI_RETRY_BACKOFF=2.0
 ```
 
-Reasoning models may reject a `temperature` parameter; use `POWERAGENTBENCH_OPENAI_TEMPERATURE=none` to omit it. The OpenAI runner uses sanitized API debug logs and does not store the API key, raw output text, or reasoning content.
+Many reasoning models reject a `temperature` parameter. Use `POWERAGENTBENCH_OPENAI_TEMPERATURE=none` to omit it. The OpenAI runner uses sanitized API debug logs and does not store the API key, raw output text, or reasoning content.
+
+If a run times out, increase the timeout:
+
+```bash
+python scripts/run_steady_n2_openai_eval.py \
+  --case-source case39 \
+  --cases 8 \
+  --budget 80 \
+  --report-k 20 \
+  --max-turns 12 \
+  --prompt-template benchmarks/steady/level_2/prompts/steady_n2_llm_prompt.json \
+  --timeout 600
+```
 
 ## Metrics
 
@@ -256,27 +280,41 @@ These metrics distinguish answer quality, tool evidence, search quality, mitigat
 
 ## Result Files
 
-Typical Level 2 outputs include per-case CSVs, aggregate summaries, tool logs, sanitized API debug JSONL files, and LaTeX table rows under `results/steady_n2/` or `results/steady_n2_openai/`.
+Typical Level 2 baseline outputs:
+
+```text
+results/steady_n2/baseline_per_case.csv
+results/steady_n2/baseline_summary.csv
+```
+
+Typical Ollama outputs:
+
+```text
+results/steady_n2/ollama_all_per_case.csv
+results/steady_n2/ollama_all_summary.csv
+results/steady_n2/<model>_per_case.csv
+results/steady_n2/<model>_summary.csv
+results/steady_n2/<model>_tool_logs.jsonl
+results/steady_n2/<model>_api_debug.jsonl
+```
+
+Typical OpenAI outputs:
+
+```text
+results/steady_n2_openai/openai_all_per_case.csv
+results/steady_n2_openai/openai_all_summary.csv
+results/steady_n2_openai/<model>-OpenAI_per_case.csv
+results/steady_n2_openai/<model>-OpenAI_summary.csv
+results/steady_n2_openai/<model>-OpenAI_tool_logs.jsonl
+results/steady_n2_openai/<model>-OpenAI_api_debug.jsonl
+```
 
 If an OpenAI run stops early after a retry failure, partial outputs are preserved with `_partial` in the filename and errors are written to an errors JSONL file.
 
-## Development and Reproducibility
+## Development Notes
 
-Before changing benchmark behavior:
-
-- preserve the public/hidden boundary;
-- keep random generation deterministic and record seeds;
-- add tests for changed scoring, validation, serialization, or aggregation behavior;
-- never commit credentials, private endpoints, secrets, or licensed data;
-- regenerate affected results after modifying prompts, adapters, scoring rules, or case-generation settings.
-
-Run the root contract and reproducibility tests locally with:
-
-```bash
-python -m pip install -e . pytest
-pytest -q
-```
-
-The repository CI runs automated contract tests and reproducibility smoke tests on pull requests and pushes to `main` and feature branches.
-
-For published or shared results, retain the run manifest next to per-case and aggregate outputs. A reproducible result should identify the repository revision, manifest fingerprint, ordered case seeds, benchmark configuration, agent/provider identifier, and result files/logs without secrets. The manifest tooling does not by itself guarantee scientific reproducibility; model/provider versions, external simulator versions, and stochastic behavior must also be recorded when they affect the run.
+- Use Level 1 to test basic steady-state action submission and physical validation.
+- Use Level 2 to test agentic behavior, tool use, validation-budget allocation, evidence-backed reporting, and LLM workflows.
+- Keep hidden oracle quantities, private endpoint URLs, and API keys outside the public repository.
+- Rotate any API key that is accidentally shared or committed.
+- Regenerate results after modifying prompts, adapters, scoring rules, or case-generation settings.
