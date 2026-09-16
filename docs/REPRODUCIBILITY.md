@@ -2,9 +2,7 @@
 
 PowerAgentBench campaign results should be reproducible and auditable without exposing credentials, private endpoints, hidden oracle information, or licensed simulator data.
 
-## 1. Create a run manifest
-
-Create a manifest before launching a multi-case campaign:
+## Create a run manifest
 
 ```bash
 python scripts/make_run_manifest.py \
@@ -18,57 +16,40 @@ python scripts/make_run_manifest.py \
   --report-k 20
 ```
 
-The manifest records the benchmark/track, ordered deterministic seeds, search parameters, case source, repository revision, Python/runtime metadata, and a SHA-256 fingerprint. The fingerprint is calculated over the manifest contents excluding the fingerprint itself, so configuration edits are detectable.
+The manifest records the benchmark/track, ordered deterministic seeds, search parameters, case source, repository revision, Python/runtime metadata, and a SHA-256 fingerprint. The fingerprint covers the manifest contents except the fingerprint field itself, making post-hoc configuration edits detectable.
 
-## 2. Parallel deterministic sharding
+## Deterministic sharding
 
-Workers can partition the manifest seed list with deterministic round-robin sharding:
+Workers partition the manifest seed list with round-robin sharding:
 
 ```python
 from poweragentbench.run_manifest import shard_seeds
-
-worker_seeds = shard_seeds(
-    manifest["seeds"],
-    shard_index=0,
-    shard_count=4,
-)
+worker_seeds = shard_seeds(manifest["seeds"], shard_index=0, shard_count=4)
 ```
 
-For a fixed manifest, shard membership is deterministic, shards are disjoint, and their union is exactly the manifest seed set.
+For a fixed manifest, shards are deterministic, disjoint, and collectively cover the seed set exactly.
 
-## 3. Strict result merging
-
-Merge worker outputs only after validating their case seeds:
+## Strict result merging
 
 ```python
 from poweragentbench.run_manifest import merge_case_results
-
 merged = merge_case_results(worker_rows, manifest["seeds"])
 ```
 
-The merger rejects duplicate, missing, or unexpected seeds and restores the canonical manifest order. This prevents partial or duplicated worker output from silently entering aggregate results.
+The merger rejects duplicate, missing, or unexpected seeds and restores manifest order, preventing partial or duplicated worker output from silently entering aggregate results.
 
-## 4. Integrity rules
+## Integrity requirements
 
-A reproducible campaign should retain, at minimum:
+Retain the exact repository revision, manifest and fingerprint, ordered seeds, benchmark configuration, agent/model/provider identifiers, per-case and aggregate results, relevant tool/event logs, and external simulator versions when applicable.
 
-- the exact repository revision;
-- the versioned run manifest and `manifest_sha256`;
-- the ordered case seeds;
-- benchmark configuration and search/validation budgets;
-- agent/model/provider identifiers and relevant model settings;
-- per-case results and aggregate results;
-- tool/event logs needed to audit the agent workflow;
-- external simulator versions where they affect results.
+Never put API keys, private endpoints, hidden oracle labels, secret prompts, or licensed simulator datasets into public manifests or result artifacts.
 
-Never place API keys, private endpoints, hidden oracle labels, secret prompts, or licensed simulator datasets in a public manifest or result artifact.
+## Validation
 
-## 5. Validation
-
-The repository's reproducibility tests cover seed generation, manifest round-tripping, fingerprint tamper detection, deterministic sharding, and strict result merging. Run them with:
+Run:
 
 ```bash
 pytest -q tests/test_run_manifest.py
 ```
 
-The CI workflow also performs a manifest-generation smoke test. A passing manifest test verifies the tooling contract; it does not by itself establish that an external model or simulator is deterministic.
+CI validates the manifest tooling across the supported Python versions and runs a manifest-generation smoke test. Passing these tests verifies the reproducibility tooling contract; it does not imply that an external model or simulator is deterministic.
