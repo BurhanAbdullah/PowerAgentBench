@@ -91,6 +91,15 @@ class PFResult:
 
 @dataclass
 class AgentOutput:
+    """Completed agent trajectory and evaluator-visible output.
+
+    ``validated`` preserves the order of first completed unique pre-action
+    validation evaluations. For tool agents this follows validation-call order
+    and candidate order within each call after invalid candidates and
+    duplicates are filtered and the budget is applied. For scripted agents it
+    follows their selected-candidate order.
+    """
+
     name: str
     validated: Dict[Contingency, float]
     reported: List[Contingency]
