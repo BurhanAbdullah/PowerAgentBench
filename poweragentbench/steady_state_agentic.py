@@ -971,97 +971,76 @@ def compute_anytime_risk_metrics(
     oracle_values: Dict[Contingency, float],
     dangerous: set[Contingency],
 ) -> Dict[str, float]:
-    """Measure risk discovered as the validation budget is consumed.
+    """Measure hidden severity discovered along the pre-action validation trajectory.
 
-    The hidden oracle is used only by the evaluator.  The agent sees neither
-    the hidden severity values nor the resulting anytime-risk metrics.
+    The trajectory is the first completed unique pre-action validation
+    evaluations in output.validated insertion order. Hidden oracle severity
+    values are used only by the evaluator. Percentage checkpoints are sampled
+    at exact fractional budget positions on the linearly interpolated
+    discovery curve; they are not rounded validation counts.
     """
     budget = int(output.validation_budget)
 
+    zero_result = {
+        "anytime_risk_auc": 0.0,
+        "anytime_risk_at_25": 0.0,
+        "anytime_risk_at_50": 0.0,
+        "anytime_risk_at_75": 0.0,
+        "anytime_risk_at_100": 0.0,
+    }
     if budget <= 0 or not dangerous:
-        return {
-            "anytime_risk_auc": 0.0,
-            "anytime_risk_at_25": 0.0,
-            "anytime_risk_at_50": 0.0,
-            "anytime_risk_at_75": 0.0,
-            "anytime_risk_at_100": 0.0,
-        }
+        return zero_result
 
     total_risk = sum(
         max(0.0, float(oracle_values.get(c, 0.0)))
         for c in dangerous
     )
-
     if total_risk <= 1e-12:
-        return {
-            "anytime_risk_auc": 0.0,
-            "anytime_risk_at_25": 0.0,
-            "anytime_risk_at_50": 0.0,
-            "anytime_risk_at_75": 0.0,
-            "anytime_risk_at_100": 0.0,
-        }
+        return zero_result
 
-    # AgentOutput.validated preserves insertion order.  This gives us a
-    # common validation trajectory for both deterministic and LLM agents.
-    validation_order = list(output.validated.keys())
+    validation_order: List[Contingency] = list(output.validated.keys())
+    points: List[Tuple[int, float]] = [(0, 0.0)]
+    discovered_risk = 0.0
+    discovered: set[Contingency] = set()
 
-    points = [(0, 0.0)]
-    discovered = set()
-
-    for i, contingency in enumerate(validation_order, start=1):
-        if i > budget:
-            break
-
+    for i, contingency in enumerate(validation_order[:budget], start=1):
+        if contingency in discovered:
+            continue
         discovered.add(contingency)
-
-        discovered_risk = sum(
-            max(0.0, float(oracle_values.get(c, 0.0)))
-            for c in discovered
-            if c in dangerous
-        )
-
+        if contingency in dangerous:
+            discovered_risk += max(0.0, float(oracle_values.get(contingency, 0.0)))
         risk_fraction = min(1.0, discovered_risk / total_risk)
         points.append((i, risk_fraction))
 
-    # If the agent used less than the available budget, hold its final
-    # discovery level for the unused portion of the budget.
+    # Hold the final discovery level over any unused validation budget.
     if points[-1][0] < budget:
         points.append((budget, points[-1][1]))
 
-    def risk_at(target: int) -> float:
-        if target <= 0:
+    def risk_at(target: float) -> float:
+        if target <= 0.0:
             return 0.0
-
         for i in range(1, len(points)):
             x0, y0 = points[i - 1]
             x1, y1 = points[i]
-
             if target <= x1:
                 if x1 == x0:
                     return float(y1)
-
                 alpha = (target - x0) / float(x1 - x0)
                 return float(y0 + alpha * (y1 - y0))
-
         return float(points[-1][1])
 
-    # Normalized trapezoidal area under the risk-discovery curve.
     auc = 0.0
-
     for (x0, y0), (x1, y1) in zip(points[:-1], points[1:]):
         auc += 0.5 * (y0 + y1) * (x1 - x0)
-
     auc /= float(budget)
 
     return {
         "anytime_risk_auc": float(auc),
-        "anytime_risk_at_25": risk_at(int(round(0.25 * budget))),
-        "anytime_risk_at_50": risk_at(int(round(0.50 * budget))),
-        "anytime_risk_at_75": risk_at(int(round(0.75 * budget))),
-        "anytime_risk_at_100": risk_at(budget),
+        "anytime_risk_at_25": risk_at(0.25 * budget),
+        "anytime_risk_at_50": risk_at(0.50 * budget),
+        "anytime_risk_at_75": risk_at(0.75 * budget),
+        "anytime_risk_at_100": risk_at(float(budget)),
     }
-
-
 def score_agent(
     original_case: GridCase,
     output: AgentOutput,
@@ -1197,6 +1176,8 @@ def score_agent(
             if output.validation_budget
             else 0.0
         ),
+
+        # Severity-weighted anytime risk discovery.
         **anytime_metrics,
     }
 
