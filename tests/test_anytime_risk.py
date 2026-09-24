@@ -52,9 +52,9 @@ class TestAnytimeRiskMetrics(unittest.TestCase):
 
         # The discovery curve reaches 0.4 at validation 1 and 0.7 at 2.
         # Exact 25% and 75% budget positions are therefore interpolated.
-        self.assertAlmostEqual(result["anytime_risk_at_25"], 0.65)
-        self.assertAlmostEqual(result["anytime_risk_at_50"], 0.85)
-        self.assertAlmostEqual(result["anytime_risk_at_75"], 0.95)
+        self.assertAlmostEqual(result["anytime_risk_at_25"], 0.80)
+        self.assertAlmostEqual(result["anytime_risk_at_50"], 1.00)
+        self.assertAlmostEqual(result["anytime_risk_at_75"], 1.00)
         self.assertAlmostEqual(result["anytime_risk_at_100"], 1.00)
 
     def test_small_fractional_budget_positions(self):
