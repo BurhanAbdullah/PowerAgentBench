@@ -16,10 +16,10 @@ From the repository root:
 
 ```bash
 python -m pip install -e . pytest
-pytest -q tests/test_benchmark_utils_contract.py
+python -m pytest -q tests/test_benchmark_utils_contract.py
 ```
 
-The repository CI runs the same contract suite on Python 3.11 for every pull request and for pushes to `main` and feature branches.
+The root contract suite is the shared Level 1/library contract suite. Repository CI runs this same suite on Python 3.10, 3.11, and 3.12 for pull requests and for pushes to `main` and branches matching `feat/**`. These commands do not run the self-contained Level 3 test suite.
 
 ## Benchmark changes
 
