@@ -97,7 +97,8 @@ class AgentOutput:
     validation evaluations. For tool agents this follows validation-call order
     and candidate order within each call after invalid candidates and
     duplicates are filtered and the budget is applied. For scripted agents it
-    follows their selected-candidate order.
+    follows selected-candidate order, including sampled order for Random and
+    combined selection order for Hybrid.
     """
 
     name: str
@@ -1010,12 +1011,8 @@ def compute_anytime_risk_metrics(
     validation_order: List[Contingency] = list(output.validated.keys())
     points: List[Tuple[int, float]] = [(0, 0.0)]
     discovered_risk = 0.0
-    discovered: set[Contingency] = set()
 
     for i, contingency in enumerate(validation_order[:budget], start=1):
-        if contingency in discovered:
-            continue
-        discovered.add(contingency)
         if contingency in dangerous:
             discovered_risk += max(0.0, float(oracle_values.get(contingency, 0.0)))
         risk_fraction = min(1.0, discovered_risk / total_risk)
