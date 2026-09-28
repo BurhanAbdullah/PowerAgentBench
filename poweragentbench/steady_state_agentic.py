@@ -1184,6 +1184,8 @@ def score_agent(
         ),
 
         # Severity-weighted anytime risk discovery.
+
+        # Severity-weighted anytime risk discovery.
         **anytime_metrics,
     }
 
