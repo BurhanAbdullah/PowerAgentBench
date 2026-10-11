@@ -179,3 +179,29 @@ def test_solution_loader_rejects_non_numeric_values(tmp_path: Path) -> None:
 
     with pytest.raises(ValueError, match="numeric"):
         load_solution(path)
+
+
+
+def test_solution_loader_rejects_boolean_values(tmp_path: Path) -> None:
+    path = tmp_path / "boolean_value.json"
+    path.write_text(json.dumps({"actions": [{"id": "tap_T1_up", "value": True}]}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="numeric"):
+        load_solution(path)
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_solution_loader_rejects_non_finite_values(tmp_path: Path, value: float) -> None:
+    path = tmp_path / "non_finite.json"
+    path.write_text(json.dumps({"actions": [{"id": "tap_T1_up", "value": value}]}), encoding="utf-8")
+
+    with pytest.raises(ValueError, match="finite"):
+        load_solution(path)
+
+
+@pytest.mark.parametrize("value", [True, float("nan"), float("inf"), float("-inf")])
+def test_validate_action_values_rejects_boolean_and_non_finite_values(value: float) -> None:
+    actionspace = load_actionspace(LEVEL1 / "actionspace.json")
+
+    with pytest.raises(ValueError, match="numeric|finite"):
+        validate_action_values({"tap_T1_up": value}, actionspace)
