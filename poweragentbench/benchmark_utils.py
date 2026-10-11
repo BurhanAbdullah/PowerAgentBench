@@ -119,11 +119,15 @@ def load_solution(path: Path) -> dict[str, float]:
         value = item.get("value")
         if not isinstance(action_id, str):
             raise ValueError("Each action entry must include a string 'id'.")
-        if not isinstance(value, (int, float)):
+        # bool subclasses int in Python, but JSON booleans are not numeric action values.
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise ValueError(f"Action '{action_id}' must include a numeric 'value'.")
+        numeric_value = float(value)
+        if not math.isfinite(numeric_value):
+            raise ValueError(f"Action '{action_id}' must include a finite numeric 'value'.")
         if action_id in values:
             raise ValueError(f"Duplicate action '{action_id}' in solution file.")
-        values[action_id] = float(value)
+        values[action_id] = numeric_value
 
     return values
 
@@ -144,6 +148,11 @@ def validate_action_values(
     for action_id, value in action_values.items():
         if action_id not in actionspace["action_index"]:
             raise ValueError(f"Unknown action '{action_id}'.")
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"Action '{action_id}' must be a numeric value.")
+        value = float(value)
+        if not math.isfinite(value):
+            raise ValueError(f"Action '{action_id}' must be a finite numeric value.")
         action = actionspace["action_index"][action_id]
         min_value = float(action["min_value"])
         max_value = float(action["max_value"])
