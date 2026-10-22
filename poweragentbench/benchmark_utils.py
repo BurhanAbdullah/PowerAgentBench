@@ -119,11 +119,18 @@ def load_solution(path: Path) -> dict[str, float]:
         value = item.get("value")
         if not isinstance(action_id, str):
             raise ValueError("Each action entry must include a string 'id'.")
-        if not isinstance(value, (int, float)):
+        # bool subclasses int in Python, but JSON booleans are not numeric actions.
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
             raise ValueError(f"Action '{action_id}' must include a numeric 'value'.")
+        try:
+            numeric_value = float(value)
+        except (OverflowError, ValueError) as exc:
+            raise ValueError(f"Action '{action_id}' must include a finite numeric 'value'.") from exc
+        if not math.isfinite(numeric_value):
+            raise ValueError(f"Action '{action_id}' must include a finite numeric 'value'.")
         if action_id in values:
             raise ValueError(f"Duplicate action '{action_id}' in solution file.")
-        values[action_id] = float(value)
+        values[action_id] = numeric_value
 
     return values
 
@@ -144,16 +151,24 @@ def validate_action_values(
     for action_id, value in action_values.items():
         if action_id not in actionspace["action_index"]:
             raise ValueError(f"Unknown action '{action_id}'.")
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            raise ValueError(f"Action '{action_id}' must be a numeric value.")
+        try:
+            numeric_value = float(value)
+        except (OverflowError, ValueError) as exc:
+            raise ValueError(f"Action '{action_id}' must be a finite numeric value.") from exc
+        if not math.isfinite(numeric_value):
+            raise ValueError(f"Action '{action_id}' must be a finite numeric value.")
         action = actionspace["action_index"][action_id]
         min_value = float(action["min_value"])
         max_value = float(action["max_value"])
         step = float(action["step"])
-        if value < min_value - 1e-9 or value > max_value + 1e-9:
+        if numeric_value < min_value - 1e-9 or numeric_value > max_value + 1e-9:
             raise ValueError(
-                f"Action '{action_id}' value {value} outside [{min_value}, {max_value}]."
+                f"Action '{action_id}' value {numeric_value} outside [{min_value}, {max_value}]."
             )
-        _assert_step(value, min_value, step, action_id)
-        validated[action_id] = value
+        _assert_step(numeric_value, min_value, step, action_id)
+        validated[action_id] = numeric_value
 
     return validated
 
