@@ -203,10 +203,11 @@ class TestToolServerValidationOrder(unittest.TestCase):
             side_effect=lambda _case, selected: {c: values[c] for c in selected},
         ):
             server = SteadyN2ToolServer(case, candidates, validation_budget=3, report_k=3)
-            server.execute("validate", {"contingencies": [list(A), list(B)]})
-            server.execute("validate", {"contingencies": [list(B), list(C), list(D)]})
+            # Deliberately non-sorted order: a sorting/rebuild regression must fail.
+            server.execute("validate", {"contingencies": [list(B), list(A)]})
+            server.execute("validate", {"contingencies": [list(A), list(C), list(D)]})
 
-        self.assertEqual(list(server.state.validated.keys()), [A, B, C])
+        self.assertEqual(list(server.state.validated.keys()), [B, A, C])
         self.assertEqual(server.state.remaining_validations, 0)
         output = AgentOutput(
             name="tool-order",
