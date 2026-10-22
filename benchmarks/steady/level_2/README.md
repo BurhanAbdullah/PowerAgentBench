@@ -164,14 +164,6 @@ These fields separate search quality, evidence quality, tool compliance, budget 
 
 ### Severity-Weighted Anytime Risk Discovery
 
-The evaluator reports severity-weighted anytime risk discovery for Level 2 through:
-
-- `anytime_risk_auc`,
-- `anytime_risk_at_25`,
-- `anytime_risk_at_50`,
-- `anytime_risk_at_75`,
-- `anytime_risk_at_100`.
-
 Dangerous contingencies are selected using the explicit severity threshold when one is supplied; otherwise the evaluator uses the configured empirical severity quantile (`danger_quantile`, default `0.95`). Values at or above the cutoff are included.
 
 Discovery is based on the first completed unique pre-action validation evaluations in their recorded order. For batched validation, candidate order within each batch matters. Duplicate requests do not create additional trajectory positions, and post-action validations do not contribute to this trajectory. A validated contingency contributes here whether or not it appears in `reported`; this is distinct from the evidence-backed submission metrics.
@@ -183,6 +175,8 @@ Each discovered dangerous contingency contributes its non-negative hidden oracle
 If the agent consumes fewer validations than the allocated budget, its final discovery level is held constant over the unused budget. A non-positive budget or total dangerous severity at or below `1e-12` produces zero-valued metrics.
 
 The per-case metrics complement final discovery, evidence, safety, mitigation, and action-cost metrics rather than replacing them. In particular, `anytime_risk_at_100` is not generally the complement of `severity_weighted_false_negative`, because anytime discovery is based on validated contingencies while the evidence-backed metric requires reported contingencies supported by validation.
+
+A higher AUC can reflect more total discovered severity, earlier discovery, or both. When comparing discovery timing specifically, consider final discovery alongside AUC.
 
 For aggregate outputs, distinguish the per-case metric names above from their corresponding `_mean` and `_std` columns. The metric catalogue is descriptive rather than an exhaustive listing of every field returned by `score_agent()`.
 
