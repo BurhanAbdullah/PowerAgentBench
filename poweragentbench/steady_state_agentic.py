@@ -975,7 +975,6 @@ class SteadyN2ToolServer:
         return {"error": f"Unknown tool '{tool}'.", "allowed_tools": ["case_summary", "rank_base_loading", "rank_lodf", "validate", "redispatch", "submit"]}, False, None
 
 
-
 def compute_anytime_risk_metrics(
     output: AgentOutput,
     oracle_values: Dict[Contingency, float],
@@ -1047,6 +1046,8 @@ def compute_anytime_risk_metrics(
         "anytime_risk_at_75": risk_at(0.75 * budget),
         "anytime_risk_at_100": risk_at(float(budget)),
     }
+
+
 def score_agent(
     original_case: GridCase,
     output: AgentOutput,
