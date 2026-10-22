@@ -30,4 +30,4 @@ jobs:
           python -m pip install -e . pytest
 
       - name: Run benchmark contract tests
-        run: python -m pytest -q tests/test_benchmark_utils_contract.py
+        run: python -m pytest -q tests/test_benchmark_utils_contract.py tests/test_solution_value_validation.py
