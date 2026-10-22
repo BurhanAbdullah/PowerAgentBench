@@ -51,7 +51,6 @@ def build_manifest(
     except (TypeError, ValueError) as exc:
         raise ValueError("metadata must be JSON-serializable") from exc
 
-    manifest_target = root_path / safe_manifest
     files: list[dict[str, Any]] = []
     for path in sorted(root_path.rglob("*")):
         if path.is_symlink() or not path.is_file():
