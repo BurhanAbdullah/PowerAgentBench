@@ -31,3 +31,6 @@ jobs:
 
       - name: Run benchmark contract tests
         run: python -m pytest -q tests/test_benchmark_utils_contract.py
+
+      - name: Run artifact manifest tests
+        run: python -m pytest -q tests/test_artifact_manifest.py
