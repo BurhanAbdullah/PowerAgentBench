@@ -321,3 +321,4 @@ If an OpenAI run stops early after a retry failure, partial outputs are preserve
 - Keep hidden oracle quantities, private endpoint URLs, and API keys outside the public repository.
 - Rotate any API key that is accidentally shared or committed.
 - Regenerate results after modifying prompts, adapters, scoring rules, or case-generation settings.
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for development, testing, and pull-request guidance.
