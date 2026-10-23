@@ -211,6 +211,7 @@ Expected format:
 Rules:
 
 - Omitted actions default to zero.
+- Values must be finite numeric values; booleans are not numeric action values. NaN, positive or negative infinity, and integers that cannot be represented as finite floats are invalid.
 - Values must match the step size in `actionspace.json`.
 - Values outside the published min/max range are invalid.
 - Duplicate action ids are invalid.
