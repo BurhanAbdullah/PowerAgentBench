@@ -19,7 +19,7 @@ python -m pip install -e . pytest
 python -m pytest -q tests/test_benchmark_utils_contract.py tests/test_solution_value_validation.py
 ```
 
-The shared Level 1/library contract suite and solution-value regression tests run on Python 3.10, 3.11, and 3.12 for pull requests and for pushes to `main` and branches matching `feat/**`. These commands do not run the self-contained Level 3 test suite.
+The shared Level 1/library contract suite and solution-value regression tests run on Python 3.10, 3.11, and 3.12 for pull requests and for pushes to `main` and branches matching `feat/**` or `fix/**`. These commands do not run the self-contained Level 3 test suite.
 
 ## Benchmark changes
 
